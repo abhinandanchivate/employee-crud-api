@@ -8,9 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/abhinandanchivate/employee-crud-api/internal/domain/dto"
 	"github.com/abhinandanchivate/employee-crud-api/internal/domain/models"
-	"github.com/abhinandanchivate/employee-crud-api/internal/domain/models/dto"
-	"github.com/abhinandanchivate/employee-crud-api/internal/repository"
 	"github.com/abhinandanchivate/employee-crud-api/internal/service"
 )
 

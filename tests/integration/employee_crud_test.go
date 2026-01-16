@@ -13,7 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/abhinandanchivate/employee-crud-api/internal/config"
-	"github.com/abhinandanchivate/employee-crud-api/internal/domain/models/dto"
+	"github.com/abhinandanchivate/employee-crud-api/internal/domain/dto"
+	"github.com/abhinandanchivate/employee-crud-api/internal/domain/models"
 	"github.com/abhinandanchivate/employee-crud-api/pkg/database"
 )
 
