@@ -16,6 +16,10 @@ type Database struct {
 	DB *gorm.DB
 }
 
+func (d *Database) Exec(s string) {
+	panic("unimplemented")
+}
+
 func (d *Database) AutoMigrate(employee *models.Employee) {
 	panic("unimplemented")
 }
