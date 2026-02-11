@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Complete Workflow</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --docker-blue: #0db7ed;
+            --docker-dark: #003f8a;
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --text-primary: #f0f4f8;
+            --text-secondary: #94a3b8;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --grid-color: rgba(13, 183, 237, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Grid Background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, 40px); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--docker-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .docker-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, var(--docker-blue), var(--docker-dark));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 10px 40px rgba(13, 183, 237, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Workflow Section */
+        .workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        /* Main Flow Cards */
+        .flow-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            align-items: center;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .flow-row {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            .arrow {
+                transform: rotate(90deg) !important;
+            }
+        }
+
+        .flow-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .flow-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--card-accent), transparent);
+        }
+
+        .flow-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--card-accent);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 40px rgba(var(--card-rgb), 0.1);
+        }
+
+        .flow-card.dockerfile { --card-accent: var(--accent-orange); --card-rgb: 245, 158, 11; }
+        .flow-card.image { --card-accent: var(--docker-blue); --card-rgb: 13, 183, 237; }
+        .flow-card.container-card { --card-accent: var(--accent-green); --card-rgb: 16, 185, 129; }
+
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .dockerfile .card-icon { background: rgba(245, 158, 11, 0.15); }
+        .image .card-icon { background: rgba(13, 183, 237, 0.15); }
+        .container-card .card-icon { background: rgba(16, 185, 129, 0.15); }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .badge {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+
+        .dockerfile .badge { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .image .badge { background: rgba(13, 183, 237, 0.2); color: var(--docker-blue); }
+        .container-card .badge { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+        .card-desc {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .code-block .comment { color: #6b7280; }
+        .code-block .keyword { color: var(--accent-pink); }
+        .code-block .string { color: var(--accent-green); }
+        .code-block .command { color: var(--docker-blue); }
+
+        /* Arrow Connector */
+        .arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .arrow-line {
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--from-color), var(--to-color));
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .arrow-line::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 8px solid transparent;
+            border-left-color: var(--to-color);
+        }
+
+        .arrow-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-card);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .arrow.build { --from-color: var(--accent-orange); --to-color: var(--docker-blue); }
+        .arrow.run { --from-color: var(--docker-blue); --to-color: var(--accent-green); }
+
+        /* Detailed Section */
+        .details-section {
+            margin-top: 60px;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .detail-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .detail-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .detail-card h3 span {
+            font-size: 24px;
+        }
+
+        .detail-card ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .detail-card li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .detail-card li::before {
+            content: '▸';
+            color: var(--docker-blue);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Lifecycle Diagram */
+        .lifecycle-section {
+            margin-top: 60px;
+        }
+
+        .lifecycle-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 40px;
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .lifecycle-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lifecycle-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .lifecycle-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .lifecycle-step:nth-child(1) .lifecycle-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .lifecycle-step:nth-child(3) .lifecycle-icon { background: linear-gradient(135deg, var(--accent-orange), #f97316); }
+        .lifecycle-step:nth-child(5) .lifecycle-icon { background: linear-gradient(135deg, var(--docker-blue), var(--docker-dark)); }
+        .lifecycle-step:nth-child(7) .lifecycle-icon { background: linear-gradient(135deg, var(--accent-green), #059669); }
+        .lifecycle-step:nth-child(9) .lifecycle-icon { background: linear-gradient(135deg, var(--accent-purple), #7c3aed); }
+
+        .lifecycle-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .lifecycle-arrow {
+            font-size: 24px;
+            color: var(--text-secondary);
+            animation: arrowPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.5; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); }
+        }
+
+        /* Commands Section */
+        .commands-section {
+            margin-top: 60px;
+        }
+
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .command-item {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .command-item:hover {
+            border-color: var(--docker-blue);
+            box-shadow: 0 0 30px rgba(13, 183, 237, 0.1);
+        }
+
+        .command-item .cmd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            color: var(--docker-blue);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .command-item .cmd::before {
+            content: '$';
+            color: var(--accent-green);
+        }
+
+        .command-item .desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 80px;
+            text-align: center;
+            padding: 30px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .footer p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .flow-card:nth-child(1) { animation-delay: 0.1s; }
+        .flow-card:nth-child(3) { animation-delay: 0.3s; }
+        .flow-card:nth-child(5) { animation-delay: 0.5s; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    
+    <div class="container">
+        <header class="header">
+            <div class="docker-logo">🐳</div>
+            <h1>Docker Complete Workflow</h1>
+            <p class="subtitle">Dockerfile → Image → Container</p>
+        </header>
+
+        <!-- Main Flow -->
+        <section class="workflow">
+            <div class="flow-row">
+                <!-- Dockerfile Card -->
+                <div class="flow-card dockerfile fade-in">
+                    <div class="card-icon">📄</div>
+                    <h2 class="card-title">
+                        Dockerfile
+                        <span class="badge">BLUEPRINT</span>
+                    </h2>
+                    <p class="card-desc">
+                        A text file containing instructions to build a Docker image. It defines the base image, dependencies, configuration, and commands.
+                    </p>
+                    <div class="code-block">
+                        <span class="comment"># Example Dockerfile</span><br>
+                        <span class="keyword">FROM</span> <span class="string">node:18-alpine</span><br>
+                        <span class="keyword">WORKDIR</span> <span class="string">/app</span><br>
+                        <span class="keyword">COPY</span> package*.json ./<br>
+                        <span class="keyword">RUN</span> <span class="command">npm install</span><br>
+                        <span class="keyword">COPY</span> . .<br>
+                        <span class="keyword">EXPOSE</span> <span class="string">3000</span><br>
+                        <span class="keyword">CMD</span> [<span class="string">"npm"</span>, <span class="string">"start"</span>]
+                    </div>
+                </div>
+
+                <!-- Arrow: Build -->
+                <div class="arrow build">
+                    <div class="arrow-label">docker build</div>
+                    <div class="arrow-line"></div>
+                </div>
+
+                <!-- Image Card -->
+                <div class="flow-card image fade-in">
+                    <div class="card-icon">📦</div>
+                    <h2 class="card-title">
+                        Docker Image
+                        <span class="badge">TEMPLATE</span>
+                    </h2>
+                    <p class="card-desc">
+                        A read-only template with layered filesystem. Images are portable, versioned, and can be shared via Docker Hub or private registries.
+                    </p>
+                    <div class="code-block">
+                        <span class="comment"># Build an image</span><br>
+                        <span class="command">docker build</span> -t myapp:v1 .<br><br>
+                        <span class="comment"># List images</span><br>
+                        <span class="command">docker images</span><br><br>
+                        <span class="comment"># Push to registry</span><br>
+                        <span class="command">docker push</span> myapp:v1
+                    </div>
+                </div>
+
+                <!-- Arrow: Run -->
+                <div class="arrow run">
+                    <div class="arrow-label">docker run</div>
+                    <div class="arrow-line"></div>
+                </div>
+
+                <!-- Container Card -->
+                <div class="flow-card container-card fade-in">
+                    <div class="card-icon">🚀</div>
+                    <h2 class="card-title">
+                        Container
+                        <span class="badge">INSTANCE</span>
+                    </h2>
+                    <p class="card-desc">
+                        A running instance of an image. Containers are isolated, lightweight, and ephemeral. Multiple containers can run from the same image.
+                    </p>
+                    <div class="code-block">
+                        <span class="comment"># Run a container</span><br>
+                        <span class="command">docker run</span> -d -p 3000:3000 myapp:v1<br><br>
+                        <span class="comment"># List running containers</span><br>
+                        <span class="command">docker ps</span><br><br>
+                        <span class="comment"># Stop container</span><br>
+                        <span class="command">docker stop</span> container_id
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Container Lifecycle -->
+        <section class="lifecycle-section">
+            <h2 class="section-title">Container Lifecycle</h2>
+            <div class="lifecycle-flow">
+                <div class="lifecycle-step">
+                    <div class="lifecycle-icon">📝</div>
+                    <span class="lifecycle-label">Create</span>
+                </div>
+                <span class="lifecycle-arrow">→</span>
+                <div class="lifecycle-step">
+                    <div class="lifecycle-icon">🔨</div>
+                    <span class="lifecycle-label">Build</span>
+                </div>
+                <span class="lifecycle-arrow">→</span>
+                <div class="lifecycle-step">
+                    <div class="lifecycle-icon">📦</div>
+                    <span class="lifecycle-label">Image</span>
+                </div>
+                <span class="lifecycle-arrow">→</span>
+                <div class="lifecycle-step">
+                    <div class="lifecycle-icon">▶️</div>
+                    <span class="lifecycle-label">Run</span>
+                </div>
+                <span class="lifecycle-arrow">→</span>
+                <div class="lifecycle-step">
+                    <div class="lifecycle-icon">⏹️</div>
+                    <span class="lifecycle-label">Stop/Remove</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Information -->
+        <section class="details-section">
+            <h2 class="section-title">Key Concepts</h2>
+            <div class="details-grid">
+                <div class="detail-card">
+                    <h3><span>📄</span> Dockerfile Instructions</h3>
+                    <ul>
+                        <li><strong>FROM</strong> — Sets the base image (e.g., ubuntu, node, python)</li>
+                        <li><strong>WORKDIR</strong> — Sets the working directory inside container</li>
+                        <li><strong>COPY/ADD</strong> — Copies files from host to container</li>
+                        <li><strong>RUN</strong> — Executes commands during build (install packages)</li>
+                        <li><strong>ENV</strong> — Sets environment variables</li>
+                        <li><strong>EXPOSE</strong> — Documents which ports the container listens on</li>
+                        <li><strong>CMD/ENTRYPOINT</strong> — Specifies the default command to run</li>
+                    </ul>
+                </div>
+
+                <div class="detail-card">
+                    <h3><span>📦</span> Image Layers</h3>
+                    <ul>
+                        <li>Each instruction in Dockerfile creates a new layer</li>
+                        <li>Layers are cached for faster subsequent builds</li>
+                        <li>Images are read-only; containers add a writable layer on top</li>
+                        <li>Shared layers between images save disk space</li>
+                        <li>Use multi-stage builds to reduce final image size</li>
+                        <li>Tag images with versions (e.g., myapp:v1.0.0)</li>
+                    </ul>
+                </div>
+
+                <div class="detail-card">
+                    <h3><span>🚀</span> Container Features</h3>
+                    <ul>
+                        <li>Isolated process space, network, and filesystem</li>
+                        <li>Shares the host OS kernel (lightweight vs VMs)</li>
+                        <li>Can be started, stopped, restarted, and removed</li>
+                        <li>Volumes persist data beyond container lifecycle</li>
+                        <li>Networks enable container-to-container communication</li>
+                        <li>Resource limits (CPU, memory) can be configured</li>
+                    </ul>
+                </div>
+
+                <div class="detail-card">
+                    <h3><span>🔄</span> Docker Registry</h3>
+                    <ul>
+                        <li>Docker Hub — public registry for sharing images</li>
+                        <li>Private registries for internal/enterprise use</li>
+                        <li><code>docker pull</code> downloads images from registry</li>
+                        <li><code>docker push</code> uploads images to registry</li>
+                        <li>Images identified by name:tag (e.g., nginx:latest)</li>
+                        <li>Official images are verified and maintained</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Common Commands -->
+        <section class="commands-section">
+            <h2 class="section-title">Essential Commands</h2>
+            <div class="commands-grid">
+                <div class="command-item">
+                    <div class="cmd">docker build -t name:tag .</div>
+                    <div class="desc">Build image from Dockerfile in current directory</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker run -d -p 8080:80 image</div>
+                    <div class="desc">Run container detached with port mapping</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker ps -a</div>
+                    <div class="desc">List all containers (running and stopped)</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker images</div>
+                    <div class="desc">List all local images</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker exec -it container bash</div>
+                    <div class="desc">Open interactive shell in running container</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker logs container</div>
+                    <div class="desc">View container logs</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker stop container</div>
+                    <div class="desc">Stop a running container gracefully</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker rm container</div>
+                    <div class="desc">Remove a stopped container</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker rmi image</div>
+                    <div class="desc">Remove an image from local storage</div>
+                </div>
+                <div class="command-item">
+                    <div class="cmd">docker-compose up -d</div>
+                    <div class="desc">Start multi-container app from compose file</div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Docker Workflow Diagram — From Dockerfile to Running Container</p>
+        </footer>
+    </div>
+
+    <script>
+        // Add intersection observer for fade-in animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.detail-card, .command-item').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>

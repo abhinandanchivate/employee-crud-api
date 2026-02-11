@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Hands-On Activities</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-code: #0d1117;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(255,255,255,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+
+        .header-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Level Tabs */
+        .level-nav {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .level-tab {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            background: var(--bg-card);
+        }
+
+        .level-tab:hover {
+            transform: translateY(-2px);
+        }
+
+        .level-tab.beginner { border-color: var(--accent-green); color: var(--accent-green); }
+        .level-tab.intermediate { border-color: var(--accent-yellow); color: var(--accent-yellow); }
+        .level-tab.advanced { border-color: var(--accent-orange); color: var(--accent-orange); }
+        .level-tab.challenge { border-color: var(--accent-red); color: var(--accent-red); }
+
+        /* Activity Card */
+        .activity {
+            background: var(--bg-card);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .activity-header {
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-number {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .beginner .activity-number { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .intermediate .activity-number { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+        .advanced .activity-number { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+        .challenge .activity-number { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+        .activity-title-section {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .activity-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .activity-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .level-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .beginner .level-badge { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .intermediate .level-badge { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+        .advanced .level-badge { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+        .challenge .level-badge { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+        .activity-body {
+            padding: 28px;
+        }
+
+        /* Sections within activity */
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+
+        .objective {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        /* Steps */
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            width: 32px;
+            height: 32px;
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-text {
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--bg-code);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'COMMAND';
+            position: absolute;
+            top: -10px;
+            left: 16px;
+            background: var(--bg-code);
+            padding: 0 8px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .code-block.dockerfile::before { content: 'DOCKERFILE'; }
+        .code-block.yaml::before { content: 'YAML'; }
+        .code-block.output::before { content: 'EXPECTED OUTPUT'; color: var(--accent-green); }
+
+        .code-block .prompt { color: var(--accent-green); }
+        .code-block .cmd { color: var(--accent-cyan); }
+        .code-block .flag { color: var(--accent-purple); }
+        .code-block .string { color: var(--accent-yellow); }
+        .code-block .comment { color: var(--text-muted); }
+        .code-block .keyword { color: var(--accent-pink); }
+
+        /* Expected Outcome */
+        .outcome-box {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        .outcome-box h4 {
+            color: var(--accent-green);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .outcome-box p, .outcome-box ul {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .outcome-box ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .outcome-box li {
+            margin-bottom: 4px;
+        }
+
+        /* Hint Box */
+        .hint-box {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        .hint-box h4 {
+            color: var(--accent-purple);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hint-box p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Bonus Box */
+        .bonus-box {
+            background: rgba(236, 72, 153, 0.08);
+            border: 1px solid rgba(236, 72, 153, 0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        .bonus-box h4 {
+            color: var(--accent-pink);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bonus-box p, .bonus-box ul {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .bonus-box ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        /* Section Divider */
+        .section-divider {
+            text-align: center;
+            margin: 60px 0 40px;
+            position: relative;
+        }
+
+        .section-divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .section-divider span {
+            background: var(--bg-dark);
+            padding: 0 24px;
+            position: relative;
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-divider .icon {
+            font-size: 1.8rem;
+        }
+
+        /* Quick Reference */
+        .quick-ref {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 28px;
+            margin-top: 60px;
+            border: 1px solid var(--border);
+        }
+
+        .quick-ref h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quick-ref-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .ref-item {
+            background: var(--bg-code);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .ref-cmd {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+        }
+
+        .ref-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        /* Print styles */
+        @media print {
+            body { background: white; color: black; }
+            .activity { break-inside: avoid; }
+            .code-block { background: #f5f5f5; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .activity-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .activity-meta {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-icon">🐳</div>
+            <h1>Docker Hands-On Activities</h1>
+            <p>Progressive exercises to master Docker containers, images, networking, and orchestration</p>
+        </header>
+
+        <!-- Level Navigation -->
+        <nav class="level-nav">
+            <div class="level-tab beginner">🟢 Beginner (1-3)</div>
+            <div class="level-tab intermediate">🟡 Intermediate (4-6)</div>
+            <div class="level-tab advanced">🟠 Advanced (7-9)</div>
+            <div class="level-tab challenge">🔴 Challenge (10)</div>
+        </nav>
+
+        <!-- ========== BEGINNER ACTIVITIES ========== -->
+        <div class="section-divider">
+            <span><span class="icon">🟢</span> Beginner Level</span>
+        </div>
+
+        <!-- Activity 1 -->
+        <article class="activity beginner">
+            <div class="activity-header">
+                <div class="activity-number">1</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Hello Docker World</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 10 mins</span>
+                        <span>📚 Container Basics</span>
+                    </div>
+                </div>
+                <div class="level-badge">Beginner</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Pull your first Docker image, run a container, and understand the basic container lifecycle (run, stop, remove).</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Pull the official Nginx image from Docker Hub:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker pull</span> <span class="string">nginx:alpine</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Run the container in detached mode with port mapping:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d -p 8080:80 --name</span> <span class="string">my-nginx nginx:alpine</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Verify the container is running and access it in browser:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker ps</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">curl</span> <span class="string">http://localhost:8080</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">View container logs, then stop and remove the container:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker logs</span> <span class="string">my-nginx</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker stop</span> <span class="string">my-nginx</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker rm</span> <span class="string">my-nginx</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <ul>
+                            <li>Nginx welcome page visible at http://localhost:8080</li>
+                            <li>Container appears in <code>docker ps</code> output</li>
+                            <li>Container successfully stopped and removed</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 2 -->
+        <article class="activity beginner">
+            <div class="activity-header">
+                <div class="activity-number">2</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Build Your First Image</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 15 mins</span>
+                        <span>📚 Dockerfile Basics</span>
+                    </div>
+                </div>
+                <div class="level-badge">Beginner</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Create a simple Dockerfile for a static HTML website and build your first custom Docker image.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a project folder and an index.html file:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">mkdir</span> my-website && <span class="cmd">cd</span> my-website<br>
+                                    <span class="prompt">$</span> <span class="cmd">echo</span> <span class="string">"&lt;h1&gt;Hello from Docker!&lt;/h1&gt;"</span> > index.html
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a Dockerfile with the following content:</p>
+                                <div class="code-block dockerfile">
+                                    <span class="keyword">FROM</span> nginx:alpine<br>
+                                    <span class="keyword">COPY</span> index.html /usr/share/nginx/html/<br>
+                                    <span class="keyword">EXPOSE</span> 80
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Build the image with a custom tag:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker build</span> <span class="flag">-t</span> <span class="string">my-website:v1</span> .
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Run a container from your new image:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d -p 8080:80</span> <span class="string">my-website:v1</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <p>Your custom HTML page displays "Hello from Docker!" at http://localhost:8080</p>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="bonus-box">
+                        <h4>🎁 Bonus Challenge</h4>
+                        <p>Modify the HTML file, rebuild as <code>my-website:v2</code>, and run both versions on different ports (8080 and 8081).</p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 3 -->
+        <article class="activity beginner">
+            <div class="activity-header">
+                <div class="activity-number">3</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Container Exploration</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 15 mins</span>
+                        <span>📚 Container Internals</span>
+                    </div>
+                </div>
+                <div class="level-badge">Beginner</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Learn to interact with running containers using exec, inspect their details, and understand container isolation.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Start an Ubuntu container in interactive mode:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-it --name</span> <span class="string">explorer ubuntu:22.04 bash</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Inside the container, explore the filesystem and create a file:</p>
+                                <div class="code-block">
+                                    <span class="comment"># Inside container</span><br>
+                                    <span class="prompt">root@container#</span> <span class="cmd">ls /</span><br>
+                                    <span class="prompt">root@container#</span> <span class="cmd">cat</span> /etc/os-release<br>
+                                    <span class="prompt">root@container#</span> <span class="cmd">echo</span> <span class="string">"I was here"</span> > /tmp/myfile.txt<br>
+                                    <span class="prompt">root@container#</span> <span class="cmd">exit</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Restart the container and check if the file persists:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker start</span> <span class="string">explorer</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker exec</span> <span class="flag">-it</span> <span class="string">explorer cat /tmp/myfile.txt</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Inspect container details:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker inspect</span> <span class="string">explorer</span> <span class="flag">--format</span> <span class="string">'{{.NetworkSettings.IPAddress}}'</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker stats</span> <span class="string">explorer</span> <span class="flag">--no-stream</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <ul>
+                            <li>File persists after container restart (but lost if container is removed)</li>
+                            <li>Container has its own IP address and isolated filesystem</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========== INTERMEDIATE ACTIVITIES ========== -->
+        <div class="section-divider">
+            <span><span class="icon">🟡</span> Intermediate Level</span>
+        </div>
+
+        <!-- Activity 4 -->
+        <article class="activity intermediate">
+            <div class="activity-header">
+                <div class="activity-number">4</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Persistent Data with Volumes</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 20 mins</span>
+                        <span>📚 Data Persistence</span>
+                    </div>
+                </div>
+                <div class="level-badge">Intermediate</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Use Docker volumes to persist database data beyond container lifecycle. Demonstrate data survives container removal.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a named volume for PostgreSQL data:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker volume create</span> <span class="string">pgdata</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker volume ls</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Run PostgreSQL with the volume attached:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d --name</span> <span class="string">mydb</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">-e</span> <span class="string">POSTGRES_PASSWORD=secret</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">-v</span> <span class="string">pgdata:/var/lib/postgresql/data</span> \<br>
+                                    &nbsp;&nbsp;<span class="string">postgres:15-alpine</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a database and insert data:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker exec</span> <span class="flag">-it</span> <span class="string">mydb psql -U postgres</span><br><br>
+                                    <span class="comment"># In psql:</span><br>
+                                    CREATE DATABASE workshop;<br>
+                                    \c workshop<br>
+                                    CREATE TABLE users (id SERIAL, name VARCHAR(50));<br>
+                                    INSERT INTO users (name) VALUES ('Alice'), ('Bob');<br>
+                                    SELECT * FROM users;<br>
+                                    \q
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Remove the container and create a new one with the same volume:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker rm</span> <span class="flag">-f</span> <span class="string">mydb</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d --name</span> <span class="string">mydb2</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">-e</span> <span class="string">POSTGRES_PASSWORD=secret</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">-v</span> <span class="string">pgdata:/var/lib/postgresql/data</span> \<br>
+                                    &nbsp;&nbsp;<span class="string">postgres:15-alpine</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">5</div>
+                            <div class="step-content">
+                                <p class="step-text">Verify data persisted:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker exec</span> <span class="flag">-it</span> <span class="string">mydb2 psql -U postgres -d workshop -c "SELECT * FROM users;"</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <p>Data (Alice, Bob) persists even after container removal because it's stored in the volume.</p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 5 -->
+        <article class="activity intermediate">
+            <div class="activity-header">
+                <div class="activity-number">5</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Container Networking</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 20 mins</span>
+                        <span>📚 Docker Networks</span>
+                    </div>
+                </div>
+                <div class="level-badge">Intermediate</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Create a custom bridge network and enable container-to-container communication using container names as hostnames.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a custom bridge network:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker network create</span> <span class="string">mynetwork</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker network ls</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Run a Redis server on the custom network:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d --name</span> <span class="string">redis-server</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">--network</span> <span class="string">mynetwork</span> \<br>
+                                    &nbsp;&nbsp;<span class="string">redis:alpine</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Run a client container on the same network and connect to Redis:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-it --rm --network</span> <span class="string">mynetwork redis:alpine redis-cli -h redis-server</span><br><br>
+                                    <span class="comment"># In redis-cli:</span><br>
+                                    SET greeting "Hello from Docker networking!"<br>
+                                    GET greeting<br>
+                                    exit
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Inspect the network to see connected containers:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker network inspect</span> <span class="string">mynetwork</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <ul>
+                            <li>Client container can reach Redis using hostname "redis-server"</li>
+                            <li>Data can be stored and retrieved via Redis</li>
+                            <li>Network inspection shows both containers</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="hint-box">
+                        <h4>💡 Key Concept</h4>
+                        <p>Custom bridge networks provide automatic DNS resolution. Containers can reach each other by name instead of IP addresses.</p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 6 -->
+        <article class="activity intermediate">
+            <div class="activity-header">
+                <div class="activity-number">6</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Docker Compose - Multi-Container App</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 25 mins</span>
+                        <span>📚 Orchestration</span>
+                    </div>
+                </div>
+                <div class="level-badge">Intermediate</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Use Docker Compose to define and run a multi-container application (WordPress + MySQL) with a single command.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a project directory and docker-compose.yml file:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">mkdir</span> wordpress-app && <span class="cmd">cd</span> wordpress-app
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Create docker-compose.yml with the following content:</p>
+                                <div class="code-block yaml">
+<span class="keyword">version:</span> <span class="string">'3.8'</span>
+
+<span class="keyword">services:</span>
+  <span class="keyword">db:</span>
+    <span class="keyword">image:</span> <span class="string">mysql:8.0</span>
+    <span class="keyword">environment:</span>
+      <span class="keyword">MYSQL_ROOT_PASSWORD:</span> <span class="string">rootpass</span>
+      <span class="keyword">MYSQL_DATABASE:</span> <span class="string">wordpress</span>
+      <span class="keyword">MYSQL_USER:</span> <span class="string">wpuser</span>
+      <span class="keyword">MYSQL_PASSWORD:</span> <span class="string">wppass</span>
+    <span class="keyword">volumes:</span>
+      - <span class="string">db_data:/var/lib/mysql</span>
+
+  <span class="keyword">wordpress:</span>
+    <span class="keyword">image:</span> <span class="string">wordpress:latest</span>
+    <span class="keyword">depends_on:</span>
+      - <span class="string">db</span>
+    <span class="keyword">ports:</span>
+      - <span class="string">"8080:80"</span>
+    <span class="keyword">environment:</span>
+      <span class="keyword">WORDPRESS_DB_HOST:</span> <span class="string">db:3306</span>
+      <span class="keyword">WORDPRESS_DB_USER:</span> <span class="string">wpuser</span>
+      <span class="keyword">WORDPRESS_DB_PASSWORD:</span> <span class="string">wppass</span>
+      <span class="keyword">WORDPRESS_DB_NAME:</span> <span class="string">wordpress</span>
+
+<span class="keyword">volumes:</span>
+  <span class="keyword">db_data:</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Start all services:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker compose up</span> <span class="flag">-d</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker compose ps</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Access WordPress at http://localhost:8080 and complete setup</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">5</div>
+                            <div class="step-content">
+                                <p class="step-text">View logs and cleanup:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker compose logs</span> <span class="flag">-f</span> <span class="comment"># Ctrl+C to exit</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker compose down</span> <span class="flag">-v</span> <span class="comment"># -v removes volumes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <ul>
+                            <li>WordPress installation wizard appears at localhost:8080</li>
+                            <li>MySQL and WordPress containers running and connected</li>
+                            <li>All resources cleaned up with single command</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========== ADVANCED ACTIVITIES ========== -->
+        <div class="section-divider">
+            <span><span class="icon">🟠</span> Advanced Level</span>
+        </div>
+
+        <!-- Activity 7 -->
+        <article class="activity advanced">
+            <div class="activity-header">
+                <div class="activity-number">7</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Multi-Stage Build Optimization</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 25 mins</span>
+                        <span>📚 Image Optimization</span>
+                    </div>
+                </div>
+                <div class="level-badge">Advanced</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Build a Go application using multi-stage builds to create a minimal production image (from ~800MB to ~10MB).</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a simple Go application (main.go):</p>
+                                <div class="code-block">
+<span class="keyword">package</span> main
+
+<span class="keyword">import</span> (
+    <span class="string">"fmt"</span>
+    <span class="string">"net/http"</span>
+)
+
+<span class="keyword">func</span> main() {
+    http.HandleFunc(<span class="string">"/"</span>, <span class="keyword">func</span>(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintf(w, <span class="string">"Hello from optimized Docker image!"</span>)
+    })
+    http.ListenAndServe(<span class="string">":8080"</span>, nil)
+}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">First, build with a standard Dockerfile (single stage):</p>
+                                <div class="code-block dockerfile">
+<span class="keyword">FROM</span> golang:1.21
+<span class="keyword">WORKDIR</span> /app
+<span class="keyword">COPY</span> main.go .
+<span class="keyword">RUN</span> go build -o server main.go
+<span class="keyword">CMD</span> ["./server"]
+                                </div>
+                                <div class="code-block" style="margin-top: 10px;">
+                                    <span class="prompt">$</span> <span class="cmd">docker build</span> <span class="flag">-t</span> <span class="string">go-app:single</span> .<br>
+                                    <span class="prompt">$</span> <span class="cmd">docker images</span> go-app:single <span class="comment"># ~800MB</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Now create a multi-stage Dockerfile:</p>
+                                <div class="code-block dockerfile">
+<span class="comment"># Build stage</span>
+<span class="keyword">FROM</span> golang:1.21-alpine <span class="keyword">AS</span> builder
+<span class="keyword">WORKDIR</span> /app
+<span class="keyword">COPY</span> main.go .
+<span class="keyword">RUN</span> CGO_ENABLED=0 go build -ldflags="-s -w" -o server main.go
+
+<span class="comment"># Production stage</span>
+<span class="keyword">FROM</span> scratch
+<span class="keyword">COPY</span> --from=builder /app/server /server
+<span class="keyword">EXPOSE</span> 8080
+<span class="keyword">CMD</span> ["/server"]
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Build and compare sizes:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker build</span> <span class="flag">-t</span> <span class="string">go-app:multi</span> .<br>
+                                    <span class="prompt">$</span> <span class="cmd">docker images</span> | grep go-app
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Expected Outcome</h4>
+                        <div class="code-block output">
+REPOSITORY   TAG      SIZE<br>
+go-app       single   814MB<br>
+go-app       multi    6.5MB
+                        </div>
+                        <p style="margin-top: 12px;">~99% reduction in image size!</p>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 8 -->
+        <article class="activity advanced">
+            <div class="activity-header">
+                <div class="activity-number">8</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Container Health Checks & Restart Policies</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 20 mins</span>
+                        <span>📚 Production Readiness</span>
+                    </div>
+                </div>
+                <div class="level-badge">Advanced</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Implement health checks in containers and configure restart policies for automatic recovery from failures.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a Dockerfile with a health check:</p>
+                                <div class="code-block dockerfile">
+<span class="keyword">FROM</span> nginx:alpine
+<span class="keyword">HEALTHCHECK</span> --interval=10s --timeout=3s --retries=3 \
+  <span class="keyword">CMD</span> wget -q --spider http://localhost/ || exit 1
+<span class="keyword">EXPOSE</span> 80
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Build and run with restart policy:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker build</span> <span class="flag">-t</span> <span class="string">healthy-nginx</span> .<br>
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d --name</span> <span class="string">web</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">--restart</span> <span class="string">unless-stopped</span> \<br>
+                                    &nbsp;&nbsp;<span class="flag">-p 8080:80</span> <span class="string">healthy-nginx</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Monitor health status:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker ps</span> <span class="comment"># Check STATUS column for (healthy)</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker inspect</span> <span class="string">web</span> <span class="flag">--format</span> <span class="string">'{{.State.Health.Status}}'</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Simulate failure and observe restart:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker exec</span> <span class="string">web nginx -s stop</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker ps</span> <span class="comment"># Container restarts automatically</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="hint-box">
+                        <h4>💡 Restart Policies</h4>
+                        <ul style="margin-top: 8px; margin-left: 20px; color: var(--text-secondary);">
+                            <li><code>no</code> - Never restart (default)</li>
+                            <li><code>on-failure</code> - Restart only on non-zero exit</li>
+                            <li><code>always</code> - Always restart</li>
+                            <li><code>unless-stopped</code> - Always, except manual stop</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Activity 9 -->
+        <article class="activity advanced">
+            <div class="activity-header">
+                <div class="activity-number">9</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Debug a Failing Container</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 20 mins</span>
+                        <span>📚 Troubleshooting</span>
+                    </div>
+                </div>
+                <div class="level-badge">Advanced</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Practice debugging techniques for containers that crash or fail to start. Learn to use logs, exec, and inspect for troubleshooting.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Steps</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">1</div>
+                            <div class="step-content">
+                                <p class="step-text">Create a "broken" container that exits immediately:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-d --name</span> <span class="string">broken alpine sh -c "exit 1"</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">2</div>
+                            <div class="step-content">
+                                <p class="step-text">Use debugging commands to investigate:</p>
+                                <div class="code-block">
+                                    <span class="comment"># Check container status</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker ps -a</span><br><br>
+                                    <span class="comment"># View logs</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker logs</span> <span class="string">broken</span><br><br>
+                                    <span class="comment"># Inspect exit code</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker inspect</span> <span class="string">broken</span> <span class="flag">--format</span> <span class="string">'{{.State.ExitCode}}'</span><br><br>
+                                    <span class="comment"># Check why it stopped</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker inspect</span> <span class="string">broken</span> <span class="flag">--format</span> <span class="string">'{{.State.Error}}'</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">3</div>
+                            <div class="step-content">
+                                <p class="step-text">Debug by overriding the entrypoint:</p>
+                                <div class="code-block">
+                                    <span class="comment"># Start fresh container with shell</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker run</span> <span class="flag">-it --entrypoint</span> <span class="string">/bin/sh alpine</span><br><br>
+                                    <span class="comment"># Or copy files from failed container</span><br>
+                                    <span class="prompt">$</span> <span class="cmd">docker cp</span> <span class="string">broken:/etc/alpine-release ./</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">4</div>
+                            <div class="step-content">
+                                <p class="step-text">Use docker events for real-time monitoring:</p>
+                                <div class="code-block">
+                                    <span class="prompt">$</span> <span class="cmd">docker events</span> <span class="flag">--filter</span> <span class="string">'container=broken'</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Debugging Toolkit</h4>
+                        <ul>
+                            <li><code>docker logs</code> - View stdout/stderr</li>
+                            <li><code>docker inspect</code> - Full container metadata</li>
+                            <li><code>docker exec</code> - Run commands in running container</li>
+                            <li><code>docker cp</code> - Copy files in/out</li>
+                            <li><code>docker events</code> - Real-time event stream</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========== CHALLENGE ========== -->
+        <div class="section-divider">
+            <span><span class="icon">🔴</span> Final Challenge</span>
+        </div>
+
+        <!-- Activity 10 -->
+        <article class="activity challenge">
+            <div class="activity-header">
+                <div class="activity-number">10</div>
+                <div class="activity-title-section">
+                    <h2 class="activity-title">Build a Full-Stack Application</h2>
+                    <div class="activity-meta">
+                        <span>⏱️ 45 mins</span>
+                        <span>📚 Capstone Project</span>
+                    </div>
+                </div>
+                <div class="level-badge">Challenge</div>
+            </div>
+            <div class="activity-body">
+                <div class="section">
+                    <div class="section-title">Objective</div>
+                    <p class="objective">Build and deploy a complete 3-tier application with frontend (Nginx), backend (Node.js/Python), and database (PostgreSQL/MongoDB) using Docker Compose.</p>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Requirements</div>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Frontend:</strong> Nginx serving static files, proxying API requests to backend</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Backend:</strong> REST API (Node.js Express or Python Flask) with database connection</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Database:</strong> PostgreSQL or MongoDB with persistent volume</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Networking:</strong> Custom network for internal communication</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Health Checks:</strong> Implement for all services</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">✓</div>
+                            <div class="step-content">
+                                <p class="step-text"><strong>Environment:</strong> Use .env file for configuration</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Sample Structure</div>
+                    <div class="code-block">
+fullstack-app/<br>
+├── docker-compose.yml<br>
+├── .env<br>
+├── frontend/<br>
+│   ├── Dockerfile<br>
+│   ├── nginx.conf<br>
+│   └── index.html<br>
+├── backend/<br>
+│   ├── Dockerfile<br>
+│   ├── package.json<br>
+│   └── server.js<br>
+└── database/<br>
+    └── init.sql
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="bonus-box">
+                        <h4>🏆 Bonus Points</h4>
+                        <ul>
+                            <li>Use multi-stage builds for backend</li>
+                            <li>Implement hot-reload for development</li>
+                            <li>Add Redis for caching layer</li>
+                            <li>Configure resource limits (CPU/memory)</li>
+                            <li>Add logging aggregation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="outcome-box">
+                        <h4>✅ Success Criteria</h4>
+                        <ul>
+                            <li>All services start with <code>docker compose up -d</code></li>
+                            <li>Frontend accessible at http://localhost</li>
+                            <li>API responds at http://localhost/api</li>
+                            <li>Data persists after <code>docker compose down && docker compose up</code></li>
+                            <li>Health checks pass for all services</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Quick Reference -->
+        <div class="quick-ref">
+            <h3>📋 Quick Command Reference</h3>
+            <div class="quick-ref-grid">
+                <div class="ref-item">
+                    <span class="ref-cmd">docker run -d -p 8080:80 image</span>
+                    <span class="ref-desc">Run detached</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker exec -it container bash</span>
+                    <span class="ref-desc">Interactive shell</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker logs -f container</span>
+                    <span class="ref-desc">Follow logs</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker build -t name:tag .</span>
+                    <span class="ref-desc">Build image</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker compose up -d</span>
+                    <span class="ref-desc">Start services</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker compose down -v</span>
+                    <span class="ref-desc">Stop + remove volumes</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker system prune -a</span>
+                    <span class="ref-desc">Cleanup all</span>
+                </div>
+                <div class="ref-item">
+                    <span class="ref-cmd">docker network create name</span>
+                    <span class="ref-desc">Create network</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

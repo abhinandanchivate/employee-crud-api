@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Image Lifecycle & Internals</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0c1222;
+            --bg-secondary: #151d2e;
+            --bg-tertiary: #1a2540;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+            --accent-yellow: #eab308;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255,255,255,0.08);
+            --glow-blue: rgba(59, 130, 246, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Animated Background */
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.05) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 50px 30px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 70px;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-tertiary);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            font-family: 'Fira Code', monospace;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header h1 {
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .header p {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Section Titles */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .section-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Main Lifecycle Diagram */
+        .lifecycle-section {
+            margin-bottom: 80px;
+        }
+
+        .lifecycle-diagram {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .lifecycle-flow {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            min-width: 1000px;
+            gap: 15px;
+        }
+
+        .lifecycle-node {
+            flex: 1;
+            max-width: 180px;
+            text-align: center;
+        }
+
+        .node-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .node-icon:hover {
+            transform: scale(1.1) translateY(-5px);
+        }
+
+        .node-icon::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 24px;
+            border: 2px dashed transparent;
+            transition: all 0.3s ease;
+        }
+
+        .node-icon:hover::after {
+            border-color: currentColor;
+            animation: spin 10s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .lifecycle-node:nth-child(1) .node-icon { background: linear-gradient(135deg, #1e3a5f, #0f172a); color: var(--accent-blue); box-shadow: 0 10px 40px rgba(59, 130, 246, 0.2); }
+        .lifecycle-node:nth-child(3) .node-icon { background: linear-gradient(135deg, #1e3a3a, #0f172a); color: var(--accent-cyan); box-shadow: 0 10px 40px rgba(6, 182, 212, 0.2); }
+        .lifecycle-node:nth-child(5) .node-icon { background: linear-gradient(135deg, #2d1f4e, #0f172a); color: var(--accent-purple); box-shadow: 0 10px 40px rgba(139, 92, 246, 0.2); }
+        .lifecycle-node:nth-child(7) .node-icon { background: linear-gradient(135deg, #1f3d2d, #0f172a); color: var(--accent-green); box-shadow: 0 10px 40px rgba(16, 185, 129, 0.2); }
+        .lifecycle-node:nth-child(9) .node-icon { background: linear-gradient(135deg, #3d2d1f, #0f172a); color: var(--accent-orange); box-shadow: 0 10px 40px rgba(249, 115, 22, 0.2); }
+        .lifecycle-node:nth-child(11) .node-icon { background: linear-gradient(135deg, #3d1f2d, #0f172a); color: var(--accent-pink); box-shadow: 0 10px 40px rgba(236, 72, 153, 0.2); }
+
+        .node-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .node-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .node-cmd {
+            margin-top: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: var(--accent-cyan);
+        }
+
+        .lifecycle-arrow {
+            display: flex;
+            align-items: center;
+            padding-top: 30px;
+            color: var(--text-muted);
+            font-size: 24px;
+            animation: arrowFlow 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrowFlow {
+            0%, 100% { opacity: 0.4; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(5px); }
+        }
+
+        /* Layer Architecture Section */
+        .layers-section {
+            margin-bottom: 80px;
+        }
+
+        .layers-container {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 1000px) {
+            .layers-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .layer-stack {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .layer-stack-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .layer-stack-title span {
+            font-size: 24px;
+        }
+
+        .layer {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .layer:hover {
+            transform: translateX(8px);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+        }
+
+        .layer-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .layer-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .layer-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .layer-detail {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .layer-size {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(0,0,0,0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .layer.writable { border-color: var(--accent-green); }
+        .layer.writable .layer-icon { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+        .layer.app { border-color: var(--accent-blue); }
+        .layer.app .layer-icon { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+
+        .layer.deps { border-color: var(--accent-purple); }
+        .layer.deps .layer-icon { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+
+        .layer.runtime { border-color: var(--accent-cyan); }
+        .layer.runtime .layer-icon { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+
+        .layer.base { border-color: var(--accent-orange); }
+        .layer.base .layer-icon { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
+
+        .layer-legend {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+        }
+
+        /* Layer Details Panel */
+        .layer-details {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .detail-card {
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .detail-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-card h4 span {
+            font-size: 20px;
+        }
+
+        .detail-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .detail-card ul {
+            list-style: none;
+            margin-top: 12px;
+        }
+
+        .detail-card li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .detail-card li::before {
+            content: '◆';
+            color: var(--accent-cyan);
+            font-size: 8px;
+            margin-top: 6px;
+        }
+
+        /* Internal Architecture Section */
+        .internals-section {
+            margin-bottom: 80px;
+        }
+
+        .internals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .internal-card {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .internal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--card-color), transparent);
+        }
+
+        .internal-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--card-color);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .internal-card.manifest { --card-color: var(--accent-blue); }
+        .internal-card.digest { --card-color: var(--accent-purple); }
+        .internal-card.unionfs { --card-color: var(--accent-cyan); }
+        .internal-card.cow { --card-color: var(--accent-green); }
+        .internal-card.storage { --card-color: var(--accent-orange); }
+        .internal-card.cache { --card-color: var(--accent-pink); }
+
+        .internal-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-bottom: 20px;
+        }
+
+        .manifest .internal-icon { background: rgba(59, 130, 246, 0.15); }
+        .digest .internal-icon { background: rgba(139, 92, 246, 0.15); }
+        .unionfs .internal-icon { background: rgba(6, 182, 212, 0.15); }
+        .cow .internal-icon { background: rgba(16, 185, 129, 0.15); }
+        .storage .internal-icon { background: rgba(249, 115, 22, 0.15); }
+        .cache .internal-icon { background: rgba(236, 72, 153, 0.15); }
+
+        .internal-card h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .internal-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin-bottom: 16px;
+        }
+
+        .code-snippet {
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-cyan);
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .code-snippet .comment { color: var(--text-muted); }
+        .code-snippet .key { color: var(--accent-pink); }
+        .code-snippet .value { color: var(--accent-green); }
+
+        /* Build Process Section */
+        .build-section {
+            margin-bottom: 80px;
+        }
+
+        .build-process {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        .build-stages {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .build-stage {
+            display: grid;
+            grid-template-columns: 50px 1fr auto;
+            gap: 20px;
+            align-items: center;
+            padding: 24px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .build-stage:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateX(10px);
+        }
+
+        .stage-num {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .stage-content h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .stage-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stage-visual {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .visual-block {
+            width: 60px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .build-stage:hover .visual-block {
+            transform: scale(1.1);
+        }
+
+        .visual-block.file { background: rgba(249, 115, 22, 0.2); }
+        .visual-block.layer { background: rgba(59, 130, 246, 0.2); }
+        .visual-block.cache { background: rgba(16, 185, 129, 0.2); }
+
+        /* Multi-Stage Build Section */
+        .multistage-section {
+            margin-bottom: 80px;
+        }
+
+        .multistage-container {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        .multistage-flow {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 900px) {
+            .multistage-flow {
+                grid-template-columns: 1fr;
+            }
+            .multistage-arrow {
+                transform: rotate(90deg);
+                justify-self: center;
+            }
+        }
+
+        .stage-box {
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid var(--border-color);
+            position: relative;
+        }
+
+        .stage-box.builder {
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+
+        .stage-box.final {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .stage-box.result {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .stage-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--bg-tertiary);
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .builder .stage-label { color: var(--accent-orange); }
+        .final .stage-label { color: var(--accent-green); }
+        .result .stage-label { color: var(--accent-blue); }
+
+        .stage-box h4 {
+            font-size: 1rem;
+            margin-bottom: 16px;
+            margin-top: 8px;
+        }
+
+        .stage-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stage-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .stage-item span {
+            font-size: 16px;
+        }
+
+        .stage-item.discarded {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        .stage-item.kept {
+            color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .multistage-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: var(--text-muted);
+        }
+
+        .size-comparison {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .size-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bar {
+            width: 80px;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .bar:hover {
+            transform: scaleY(1.05);
+        }
+
+        .bar.before {
+            height: 200px;
+            background: linear-gradient(to top, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1));
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            color: var(--accent-red);
+        }
+
+        .bar.after {
+            height: 60px;
+            background: linear-gradient(to top, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1));
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            color: var(--accent-green);
+        }
+
+        .bar-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Commands Reference */
+        .commands-section {
+            margin-bottom: 80px;
+        }
+
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .command-card {
+            background: var(--bg-secondary);
+            border-radius: 14px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .command-card:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.1);
+        }
+
+        .command-card .cmd {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .command-card .cmd::before {
+            content: '$';
+            color: var(--accent-green);
+        }
+
+        .command-card .desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .footer p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 0.8s ease forwards;
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body>
+    <div class="bg-pattern"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header fade-up">
+            <div class="header-badge">
+                <span>🐳</span>
+                Deep Dive
+            </div>
+            <h1>Docker Image Lifecycle & Internals</h1>
+            <p>Understanding the complete lifecycle of Docker images, layer architecture, storage mechanics, and optimization techniques</p>
+        </header>
+
+        <!-- Section 1: Complete Image Lifecycle -->
+        <section class="lifecycle-section fade-up delay-1">
+            <div class="section-header">
+                <div class="section-number">1</div>
+                <div>
+                    <h2 class="section-title">Complete Image Lifecycle</h2>
+                    <p class="section-subtitle">From creation to removal — every stage of an image's life</p>
+                </div>
+            </div>
+
+            <div class="lifecycle-diagram">
+                <div class="lifecycle-flow">
+                    <div class="lifecycle-node">
+                        <div class="node-icon">📝</div>
+                        <div class="node-title">Write</div>
+                        <div class="node-desc">Create Dockerfile with instructions</div>
+                        <div class="node-cmd">vim Dockerfile</div>
+                    </div>
+
+                    <div class="lifecycle-arrow">→</div>
+
+                    <div class="lifecycle-node">
+                        <div class="node-icon">🔨</div>
+                        <div class="node-title">Build</div>
+                        <div class="node-desc">Execute instructions, create layers</div>
+                        <div class="node-cmd">docker build -t app .</div>
+                    </div>
+
+                    <div class="lifecycle-arrow">→</div>
+
+                    <div class="lifecycle-node">
+                        <div class="node-icon">🏷️</div>
+                        <div class="node-title">Tag</div>
+                        <div class="node-desc">Version and label the image</div>
+                        <div class="node-cmd">docker tag app:v1.0</div>
+                    </div>
+
+                    <div class="lifecycle-arrow">→</div>
+
+                    <div class="lifecycle-node">
+                        <div class="node-icon">📤</div>
+                        <div class="node-title">Push</div>
+                        <div class="node-desc">Upload to registry</div>
+                        <div class="node-cmd">docker push repo/app</div>
+                    </div>
+
+                    <div class="lifecycle-arrow">→</div>
+
+                    <div class="lifecycle-node">
+                        <div class="node-icon">📥</div>
+                        <div class="node-title">Pull</div>
+                        <div class="node-desc">Download from registry</div>
+                        <div class="node-cmd">docker pull repo/app</div>
+                    </div>
+
+                    <div class="lifecycle-arrow">→</div>
+
+                    <div class="lifecycle-node">
+                        <div class="node-icon">🗑️</div>
+                        <div class="node-title">Remove</div>
+                        <div class="node-desc">Delete image and layers</div>
+                        <div class="node-cmd">docker rmi app</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Layer Architecture -->
+        <section class="layers-section fade-up delay-2">
+            <div class="section-header">
+                <div class="section-number">2</div>
+                <div>
+                    <h2 class="section-title">Layer Architecture</h2>
+                    <p class="section-subtitle">How Docker images are structured as layered filesystems</p>
+                </div>
+            </div>
+
+            <div class="layers-container">
+                <div class="layer-stack">
+                    <h3 class="layer-stack-title"><span>📚</span> Image Layer Stack</h3>
+                    
+                    <div class="layer writable">
+                        <div class="layer-info">
+                            <div class="layer-icon">✏️</div>
+                            <div>
+                                <div class="layer-name">Container Layer (R/W)</div>
+                                <div class="layer-detail">Writable layer for runtime changes</div>
+                            </div>
+                        </div>
+                        <div class="layer-size">Ephemeral</div>
+                    </div>
+
+                    <div class="layer app">
+                        <div class="layer-info">
+                            <div class="layer-icon">📦</div>
+                            <div>
+                                <div class="layer-name">Application Code</div>
+                                <div class="layer-detail">COPY . /app</div>
+                            </div>
+                        </div>
+                        <div class="layer-size">~15 MB</div>
+                    </div>
+
+                    <div class="layer deps">
+                        <div class="layer-info">
+                            <div class="layer-icon">📚</div>
+                            <div>
+                                <div class="layer-name">Dependencies</div>
+                                <div class="layer-detail">RUN npm install</div>
+                            </div>
+                        </div>
+                        <div class="layer-size">~120 MB</div>
+                    </div>
+
+                    <div class="layer runtime">
+                        <div class="layer-info">
+                            <div class="layer-icon">⚙️</div>
+                            <div>
+                                <div class="layer-name">Runtime Environment</div>
+                                <div class="layer-detail">Node.js, Python, etc.</div>
+                            </div>
+                        </div>
+                        <div class="layer-size">~180 MB</div>
+                    </div>
+
+                    <div class="layer base">
+                        <div class="layer-info">
+                            <div class="layer-icon">🏔️</div>
+                            <div>
+                                <div class="layer-name">Base OS Layer</div>
+                                <div class="layer-detail">FROM alpine:3.18</div>
+                            </div>
+                        </div>
+                        <div class="layer-size">~5 MB</div>
+                    </div>
+
+                    <div class="layer-legend">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--accent-green);"></div>
+                            Writable
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--accent-blue);"></div>
+                            Read-Only
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: var(--accent-orange);"></div>
+                            Shared
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layer-details">
+                    <div class="detail-card">
+                        <h4><span>📐</span> Layer Characteristics</h4>
+                        <ul>
+                            <li>Each Dockerfile instruction creates a new layer</li>
+                            <li>Layers are immutable once created</li>
+                            <li>Layers are content-addressable (identified by SHA256 hash)</li>
+                            <li>Shared layers are stored only once on disk</li>
+                            <li>Order of layers matters for cache efficiency</li>
+                        </ul>
+                    </div>
+
+                    <div class="detail-card">
+                        <h4><span>⚡</span> Layer Optimization Tips</h4>
+                        <ul>
+                            <li>Combine RUN commands to reduce layer count</li>
+                            <li>Place frequently changing instructions last</li>
+                            <li>Use .dockerignore to exclude unnecessary files</li>
+                            <li>Clean up in the same layer (rm -rf /var/cache/*)</li>
+                            <li>Use multi-stage builds for smaller final images</li>
+                        </ul>
+                    </div>
+
+                    <div class="detail-card">
+                        <h4><span>🔍</span> Inspect Layers</h4>
+                        <div class="code-snippet">
+                            <span class="comment"># View image layers</span><br>
+                            docker history myimage:latest<br><br>
+                            <span class="comment"># Detailed layer info</span><br>
+                            docker inspect myimage:latest
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Internal Architecture -->
+        <section class="internals-section fade-up delay-3">
+            <div class="section-header">
+                <div class="section-number">3</div>
+                <div>
+                    <h2 class="section-title">Internal Architecture</h2>
+                    <p class="section-subtitle">The core mechanisms that power Docker images</p>
+                </div>
+            </div>
+
+            <div class="internals-grid">
+                <div class="internal-card manifest">
+                    <div class="internal-icon">📋</div>
+                    <h3>Image Manifest</h3>
+                    <p>JSON document that describes the image, including layer digests, configuration, and platform info.</p>
+                    <div class="code-snippet">
+                        {<br>
+                        &nbsp;&nbsp;<span class="key">"schemaVersion"</span>: <span class="value">2</span>,<br>
+                        &nbsp;&nbsp;<span class="key">"mediaType"</span>: <span class="value">"...manifest.v2"</span>,<br>
+                        &nbsp;&nbsp;<span class="key">"config"</span>: { <span class="key">"digest"</span>: <span class="value">"sha256:..."</span> },<br>
+                        &nbsp;&nbsp;<span class="key">"layers"</span>: [ ... ]<br>
+                        }
+                    </div>
+                </div>
+
+                <div class="internal-card digest">
+                    <div class="internal-icon">🔐</div>
+                    <h3>Content Digest (SHA256)</h3>
+                    <p>Unique cryptographic hash identifying each layer and image. Ensures integrity and enables deduplication.</p>
+                    <div class="code-snippet">
+                        sha256:a3ed95caeb02...<br><br>
+                        <span class="comment"># Immutable reference</span><br>
+                        docker pull nginx@sha256:abc123...
+                    </div>
+                </div>
+
+                <div class="internal-card unionfs">
+                    <div class="internal-icon">🗂️</div>
+                    <h3>Union Filesystem</h3>
+                    <p>Merges multiple read-only layers into a single coherent filesystem view. OverlayFS is the default driver.</p>
+                    <div class="code-snippet">
+                        <span class="comment"># OverlayFS layers:</span><br>
+                        upperdir/ <span class="comment"># container writes</span><br>
+                        lowerdir/ <span class="comment"># image layers</span><br>
+                        merged/&nbsp;&nbsp; <span class="comment"># unified view</span>
+                    </div>
+                </div>
+
+                <div class="internal-card cow">
+                    <div class="internal-icon">🐄</div>
+                    <h3>Copy-on-Write (CoW)</h3>
+                    <p>Files are copied to the writable layer only when modified. Original layers remain untouched.</p>
+                    <div class="code-snippet">
+                        <span class="comment"># Read: from lower layer</span><br>
+                        <span class="comment"># Write: copy up, then modify</span><br>
+                        <span class="comment"># Delete: whiteout file created</span>
+                    </div>
+                </div>
+
+                <div class="internal-card storage">
+                    <div class="internal-icon">💾</div>
+                    <h3>Storage Driver</h3>
+                    <p>Manages how layers are stored and combined. Common drivers: overlay2, devicemapper, btrfs, zfs.</p>
+                    <div class="code-snippet">
+                        <span class="comment"># Check storage driver</span><br>
+                        docker info | grep "Storage Driver"<br><br>
+                        <span class="comment"># Layer location</span><br>
+                        /var/lib/docker/overlay2/
+                    </div>
+                </div>
+
+                <div class="internal-card cache">
+                    <div class="internal-icon">⚡</div>
+                    <h3>Build Cache</h3>
+                    <p>Reuses existing layers when instructions and context haven't changed. Dramatically speeds up builds.</p>
+                    <div class="code-snippet">
+                        <span class="comment"># Cache hit</span><br>
+                        ---> Using cache abc123<br><br>
+                        <span class="comment"># Skip cache</span><br>
+                        docker build --no-cache .
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Build Process -->
+        <section class="build-section fade-up delay-4">
+            <div class="section-header">
+                <div class="section-number">4</div>
+                <div>
+                    <h2 class="section-title">Build Process Deep Dive</h2>
+                    <p class="section-subtitle">What happens when you run docker build</p>
+                </div>
+            </div>
+
+            <div class="build-process">
+                <div class="build-stages">
+                    <div class="build-stage">
+                        <div class="stage-num">1</div>
+                        <div class="stage-content">
+                            <h4>Parse Dockerfile</h4>
+                            <p>Docker daemon reads and validates the Dockerfile syntax and instructions</p>
+                        </div>
+                        <div class="stage-visual">
+                            <div class="visual-block file">📄</div>
+                            <span>→</span>
+                            <div class="visual-block layer">🔍</div>
+                        </div>
+                    </div>
+
+                    <div class="build-stage">
+                        <div class="stage-num">2</div>
+                        <div class="stage-content">
+                            <h4>Send Build Context</h4>
+                            <p>All files in the build directory (minus .dockerignore) are sent to the daemon</p>
+                        </div>
+                        <div class="stage-visual">
+                            <div class="visual-block file">📁</div>
+                            <span>→</span>
+                            <div class="visual-block layer">🐳</div>
+                        </div>
+                    </div>
+
+                    <div class="build-stage">
+                        <div class="stage-num">3</div>
+                        <div class="stage-content">
+                            <h4>Execute Instructions</h4>
+                            <p>Each instruction runs in a temporary container, changes are committed as a new layer</p>
+                        </div>
+                        <div class="stage-visual">
+                            <div class="visual-block layer">📦</div>
+                            <div class="visual-block layer">📦</div>
+                            <div class="visual-block layer">📦</div>
+                        </div>
+                    </div>
+
+                    <div class="build-stage">
+                        <div class="stage-num">4</div>
+                        <div class="stage-content">
+                            <h4>Check Build Cache</h4>
+                            <p>Before each step, Docker checks if a cached layer exists for identical instruction + context</p>
+                        </div>
+                        <div class="stage-visual">
+                            <div class="visual-block cache">💾</div>
+                            <span>✓</span>
+                            <div class="visual-block layer">⚡</div>
+                        </div>
+                    </div>
+
+                    <div class="build-stage">
+                        <div class="stage-num">5</div>
+                        <div class="stage-content">
+                            <h4>Create Final Image</h4>
+                            <p>All layers are combined, metadata is added, and the image is tagged and stored locally</p>
+                        </div>
+                        <div class="stage-visual">
+                            <div class="visual-block layer">🏷️</div>
+                            <span>→</span>
+                            <div class="visual-block cache">✅</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Multi-Stage Builds -->
+        <section class="multistage-section fade-up">
+            <div class="section-header">
+                <div class="section-number">5</div>
+                <div>
+                    <h2 class="section-title">Multi-Stage Builds</h2>
+                    <p class="section-subtitle">Create minimal production images by discarding build artifacts</p>
+                </div>
+            </div>
+
+            <div class="multistage-container">
+                <div class="multistage-flow">
+                    <div class="stage-box builder">
+                        <div class="stage-label">Stage 1: Builder</div>
+                        <h4>Build Environment</h4>
+                        <div class="stage-items">
+                            <div class="stage-item discarded"><span>🔧</span> Build tools (gcc, make)</div>
+                            <div class="stage-item discarded"><span>📚</span> Dev dependencies</div>
+                            <div class="stage-item discarded"><span>📁</span> Source code</div>
+                            <div class="stage-item kept"><span>📦</span> Compiled binary</div>
+                        </div>
+                    </div>
+
+                    <div class="multistage-arrow">→</div>
+
+                    <div class="stage-box final">
+                        <div class="stage-label">Stage 2: Production</div>
+                        <h4>Runtime Only</h4>
+                        <div class="stage-items">
+                            <div class="stage-item kept"><span>🏔️</span> Minimal base image</div>
+                            <div class="stage-item kept"><span>📦</span> Compiled binary</div>
+                            <div class="stage-item kept"><span>⚙️</span> Runtime deps only</div>
+                        </div>
+                    </div>
+
+                    <div class="multistage-arrow">=</div>
+
+                    <div class="stage-box result">
+                        <div class="stage-label">Result</div>
+                        <h4>Optimized Image</h4>
+                        <div class="stage-items">
+                            <div class="stage-item"><span>✅</span> Smaller attack surface</div>
+                            <div class="stage-item"><span>✅</span> Faster deployments</div>
+                            <div class="stage-item"><span>✅</span> Lower storage costs</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="size-comparison">
+                    <div class="size-bar">
+                        <div class="bar before">1.2 GB</div>
+                        <div class="bar-label">Without Multi-Stage</div>
+                    </div>
+                    <div class="size-bar">
+                        <div class="bar after">85 MB</div>
+                        <div class="bar-label">With Multi-Stage</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Image Commands Reference -->
+        <section class="commands-section fade-up">
+            <div class="section-header">
+                <div class="section-number">6</div>
+                <div>
+                    <h2 class="section-title">Image Commands Reference</h2>
+                    <p class="section-subtitle">Essential commands for managing Docker images</p>
+                </div>
+            </div>
+
+            <div class="commands-grid">
+                <div class="command-card">
+                    <div class="cmd">docker build -t name:tag .</div>
+                    <div class="desc">Build image from Dockerfile in current directory</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker images</div>
+                    <div class="desc">List all local images with sizes</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker history image</div>
+                    <div class="desc">Show layer history and sizes</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker inspect image</div>
+                    <div class="desc">View detailed image metadata as JSON</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker tag source target</div>
+                    <div class="desc">Create a new tag for an image</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker push repo/image:tag</div>
+                    <div class="desc">Upload image to a registry</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker pull repo/image:tag</div>
+                    <div class="desc">Download image from a registry</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker save image > file.tar</div>
+                    <div class="desc">Export image to a tar archive</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker load < file.tar</div>
+                    <div class="desc">Import image from tar archive</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker rmi image</div>
+                    <div class="desc">Remove an image (and unused layers)</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker image prune -a</div>
+                    <div class="desc">Remove all unused images</div>
+                </div>
+                <div class="command-card">
+                    <div class="cmd">docker system df</div>
+                    <div class="desc">Show Docker disk usage breakdown</div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Docker Image Lifecycle & Internal Architecture — Complete Reference Guide</p>
+        </footer>
+    </div>
+
+    <script>
+        // Intersection Observer for scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        // Layer hover effect
+        document.querySelectorAll('.layer').forEach(layer => {
+            layer.addEventListener('mouseenter', () => {
+                layer.style.zIndex = '10';
+            });
+            layer.addEventListener('mouseleave', () => {
+                layer.style.zIndex = '1';
+            });
+        });
+    </script>
+</body>
+</html>
